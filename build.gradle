@@ -6,121 +6,124 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.31.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$vKotlin"
+        classpath "com.vanniktech:gradle-maven-publish-plugin:$vMavenPublish"
     }
 }
 
-apply plugin: 'java-library'
-apply plugin: 'com.vanniktech.maven.publish'
+def projectName = rootProject.name
+group 'in.mcxiv'
+version vGdxUIExt
 
-//Obviously, change the next line to match your project name.
-def projectName = 'libgdx-library-template'
+apply plugin: 'idea'
+idea.module.excludeDirs += [file("docs/")]
 
-//Change this to whatever Maven Central group you might publish to,
-//which is probably not this one if you aren't Tommy Ettinger.
-group 'com.github.tommyettinger'
+subprojects {
+    apply plugin: 'java-library'
 
-version "$VERSION_NAME" // You can set the version in gradle.properties .
+    group += '.' + name
 
-import com.vanniktech.maven.publish.JavaLibrary
-import com.vanniktech.maven.publish.JavadocJar
+    [compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
 
-// This just makes sure that a Javadoc JAR and a sources JAR are produced.
-mavenPublishing {
-    configure(new JavaLibrary(new JavadocJar.Javadoc(), true))
+    // http://blog.joda.org/2014/02/turning-off-doclint-in-jdk-8-javadoc.html
+    if (JavaVersion.current().isJava8Compatible()) {
+        tasks.withType(Javadoc).tap { configureEach {/* https://discuss.gradle.org/t/passing-arguments-to-compiler-and-javadoc/1661 */ options.addStringOption('Xdoclint:none,-missing', '-quiet') } }
+    }
+
+    java {
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    compileJava {
+        sourceCompatibility = 8
+        targetCompatibility = 8
+        if (JavaVersion.current().isJava9Compatible()) options.release.set(8)
+    }
+
+    compileTestJava {
+        sourceCompatibility = 8
+        targetCompatibility = 8
+        if (JavaVersion.current().isJava9Compatible()) options.release.set(8)
+    }
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url 'https://s01.oss.sonatype.org' }
+        google()
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+        maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
+        maven { url 'https://jitpack.io' }
+    }
+
+    dependencies {
+        api "com.badlogicgames.gdx:gdx:$vGdx"
+        testImplementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$vGdx"
+        testImplementation "com.badlogicgames.gdx:gdx-platform:$vGdx:natives-desktop"
+        testImplementation "junit:junit:$vJUnit"
+    }
+
+    javadoc {
+        destinationDir = file('docs/apidocs')
+        options { links 'https://javadoc.io/doc/com.badlogicgames.gdx/gdx/latest/' }
+    }
 }
 
-// This sets the Javadoc JAR to have hopefully the correct name. This may need adjustment.
-mavenPlainJavadocJar.archiveBaseName.set(projectName)
+configure(subprojects.findAll { it.path.contains(':vis') }) {
+    dependencies {
+        api "com.kotcrab.vis:vis-ui:$vVisUi"
+    }
+}
 
-// There's pretty much no reason to use any encoding other than UTF-8 .
-[compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
+configure(subprojects.findAll { it.path.contains(':ktx') }) {
+    apply plugin: "org.jetbrains.kotlin.jvm"
+    compileKotlin { compilerOptions { incremental = true } }
+    kotlin { jvmToolchain(8) }
+    dependencies {
+        testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    }
+}
 
-// Disable JDK 8's doclint
-// http://blog.joda.org/2014/02/turning-off-doclint-in-jdk-8-javadoc.html
-if (JavaVersion.current().isJava8Compatible()) {
-    allprojects {
-        tasks.withType(Javadoc).tap {
-            configureEach {
-                // The -quiet is because of some sort of weird JDK JavaCompiler bug:
-                // https://discuss.gradle.org/t/passing-arguments-to-compiler-and-javadoc/1661
-                options.addStringOption('Xdoclint:none,-missing', '-quiet')
+configure(subprojects.findAll { it.path.contains(':vis:ktx') }) {
+    dependencies {
+        api "io.github.libktx:ktx-vis-style:$vKTX"
+        api "io.github.libktx:ktx-vis:$vKTX"
+    }
+}
+
+configure(subprojects.findAll { it.path.contains(':vis') || it.path.contains(':ktx') }) {
+    def parentPath = path.toString()
+    parentPath = parentPath.substring(0, parentPath.lastIndexOf(":"))
+    dependencies { api project(parentPath) }
+}
+
+apply plugin: 'maven-publish'
+publishing {
+    publications {
+        subprojects.forEach { subproject ->
+            def classifier = subproject.path.replace(':', '-')
+            def baseName = projectName + classifier
+
+            def packageLibrary = subproject.tasks.register('packageLibrary', Jar) {
+                archiveBaseName = baseName
+                from subproject.sourceSets.main.output.classesDirs
+//              from subproject.sourceSets.main.output.resourcesDir
+                manifest { attributes 'Implementation-Title': baseName, 'Implementation-Version': version }
+            }
+
+            def packageSources = subproject.tasks.register('packageSources', Jar) {
+                archiveBaseName = baseName
+                dependsOn subproject.tasks.classes
+                from subproject.sourceSets.main.allSource
+                archiveClassifier = 'sources'
+            }
+
+            "$baseName"(MavenPublication) {
+                artifactId = baseName
+                artifact packageLibrary
+                artifact packageSources
             }
         }
     }
-}
-
-compileJava {
-	// The default Java language level this targets is 8, which is as low as current
-    // (Java 20 and newer) JDKs will permit you to target.
-    // Targeting Java 7 is the lowest version you could need to go at this point, and
-    // to target 7 you need to be using Java 19 or lower. The default used for JitPack
-    // builds in this configuration uses Java 21 to build, so you would need to change
-    // jitpack.yml to use openjdk17 instead of openjdk21 if you really want to target 7.
-	// libGDX itself targets a mix of Java 7 (for most backends) and 8 (for LWJGL3).
-    // You must use 8 if any libraries you use need Java 8 (some that
-    // come to mind are simple-graphs and jdkgdxds, plus anything that needs LWJGL3).
-    sourceCompatibility = 8
-    targetCompatibility = 8
-    if (JavaVersion.current().isJava9Compatible()) {
-        options.release.set(8)
-    }
-}
-
-compileTestJava {
-	// LWJGL3 needs Java 8 starting in libGDX 1.11.0, which forces tests that use LWJGL3
-	// to use Java 8 or higher. Using options.release enforces compatibility with Java 8,
-	// including how NIO Buffers behave (which broke compatibility in Java 9).
-    sourceCompatibility = 8
-    targetCompatibility = 8
-    if (JavaVersion.current().isJava9Compatible()) {
-        options.release.set(8)
-    }
-}
-
-// JavaDocs will be published inside the docs/ folder, which you can easily put on GitHub Pages
-// in your repo settings.
-// You may instead want to remove this line if frequent doc changes use up too much repo space,
-// or if you use a different version control host that doesn't host HTML like this.
-javadoc {
-    destinationDir = file('docs/apidocs')
-    options {
-        links 'https://javadoc.io/doc/com.badlogicgames.gdx/gdx/latest/'
-    }
-}
-
-apply plugin: 'idea'
-// This makes IDEA avoid including generated JavaDocs (which are HTML files) in any search results.
-// If you changed where JavaDocs are published above, you should change the next line, too.
-idea.module.excludeDirs += [file("docs/")]
-
-jar {
-    archiveBaseName.set(projectName)
-    manifest {
-        attributes 'Implementation-Title': projectName, 'Implementation-Version': archiveVersion
-    }
-}
-
-repositories {
-    // You can comment out mavenLocal() if you have problems with GWT or other sources dependencies.
-    mavenLocal()
-    mavenCentral()
-    maven { url 'https://s01.oss.sonatype.org' }
-    google()
-    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
-    maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
-    // JitPack is a good repo to have if you depend on commit versions.
-    // Having the below repo might cause problems if uploading to Maven Central.
-    maven { url 'https://jitpack.io' }
-}
-
-dependencies {
-// Change gdxVersion in gradle.properties to update or downgrade.
-// Libraries that don't use libGDX directly can change the next line
-// from `api` to `testImplementation` .
-    api "com.badlogicgames.gdx:gdx:$gdxVersion"
-// "lwjgl3" could be changed to "headless" for command-line-only testing.
-    testImplementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
-    testImplementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
-    testImplementation "junit:junit:4.13.2"
 }
