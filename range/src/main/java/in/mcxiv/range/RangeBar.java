@@ -391,11 +391,16 @@ public class RangeBar extends Widget implements Disableable {
         this.programmaticChangeEvents = programmaticChangeEvents;
     }
 
-    public float getRangeStart() {
+    public void setSelectionRange(float start, float end) {
+        setValueL(Math.min(start, end));
+        setValueR(Math.max(start, end));
+    }
+
+    public float getSelectionRangeStart() {
         return Math.min(valueL, valueR);
     }
 
-    public float getRangeEnd() {
+    public float getSelectionRangeEnd() {
         return Math.max(valueL, valueR);
     }
 }

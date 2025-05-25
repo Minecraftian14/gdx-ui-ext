@@ -98,6 +98,26 @@ configure(subprojects.findAll { it.path.contains(':vis') || it.path.contains(':k
     dependencies { api project(parentPath) }
 }
 
+configure(project(':demo')) {
+    apply plugin: "org.jetbrains.kotlin.jvm"
+    compileKotlin { compilerOptions { incremental = true } }
+    kotlin { jvmToolchain(8) }
+    dependencies {
+        api "com.kotcrab.vis:vis-ui:$vVisUi"
+        api "io.github.libktx:ktx-actors:$vKTX"
+        api "io.github.libktx:ktx-vis-style:$vKTX"
+        api "io.github.libktx:ktx-vis:$vKTX"
+        api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$vGdx"
+        api "com.badlogicgames.gdx:gdx-platform:$vGdx:natives-desktop"
+
+        rootProject.subprojects
+                .findAll { it.path != ':demo' }
+                .forEach { api it }
+
+        testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    }
+}
+
 apply plugin: 'maven-publish'
 publishing {
     publications {

@@ -1,6 +1,12 @@
 plugins {
-  id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
 }
 
 rootProject.name = 'gdx-ui-ext'
-include ':range', ':range:vis', ':range:ktx', ':range:vis:ktx'
+
+def enrichedModule = (String module) ->
+        new String[]{"$module", "$module:vis", "$module:ktx", "$module:vis:ktx"}
+
+include ':demo'
+include enrichedModule(':range')
+include enrichedModule(':grid')
