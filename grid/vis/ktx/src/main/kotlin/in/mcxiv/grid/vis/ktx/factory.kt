@@ -15,9 +15,10 @@ import kotlin.contracts.contract
 @OptIn(ExperimentalContracts::class)
 inline fun <S> KWidget<S>.visGrid(
     items: Array<Array<Any>>, alignment: Int = Align.left, columnFit: ColumnFit = ColumnFit.EXACT,
+    formats: Array<Any> = if (items.isNotEmpty()) items[0].map { "%s" }.toTypedArray() else arrayOf(),
     style: String = defaultStyle,
     init: (@Scene2dDsl VisGrid).(S) -> Unit = {},
 ): VisGrid {
     contract { callsInPlace(init, InvocationKind.EXACTLY_ONCE) }
-    return actor(VisGrid(items, alignment, columnFit, style), init)
+    return actor(VisGrid(items, formats, alignment, columnFit, style), init)
 }

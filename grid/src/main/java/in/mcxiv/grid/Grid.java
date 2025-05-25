@@ -18,7 +18,11 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.Pools;
 
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
+import java.util.Objects;
+import java.util.function.Function;
 
 public class Grid extends Widget {
 
@@ -31,6 +35,7 @@ public class Grid extends Widget {
 
     protected ListStyle style;
     public Object[][] items;
+    public Object[] formats; // One format per column
     public ColumnFit columnFit = ColumnFit.EXACT;
     private int alignment = Align.left;
 
@@ -54,9 +59,10 @@ public class Grid extends Widget {
     protected int mDragStartRowIdx = -1;
     protected int mDragStartColIdx = -1;
 
-    public Grid(Object[][] items, int alignment, ColumnFit columnFit, ListStyle style) {
+    public Grid(Object[][] itemsIn, Object[] formats, int alignment, ColumnFit columnFit, ListStyle style) {
         setStyle(style);
-        setItems(items);
+        this.formats = formats;
+        setItems(itemsIn);
         setSize(getPrefWidth(), getPrefHeight());
         this.columnFit = columnFit;
         this.alignment = alignment;
@@ -192,20 +198,37 @@ public class Grid extends Widget {
         return index;
     }
 
-    private void setItems(Object[][] items) {
+    public void setItems(Object[][] items) {
         if (items == null) throw new IllegalArgumentException("What are you trying to do?");
         int rows = items.length;
-        int cols = items[0].length;
+        int cols = rows == 0 ? 0 : items[0].length;
         for (int rowIdx = 1; rowIdx < rows; rowIdx++)
             if (items[rowIdx].length != cols) throw new IllegalArgumentException("Items array should be a perfect rectangle.");
         this.rows = rows;
         this.cols = cols;
         this.items = items;
-        this.strings = new String[rows][cols];
-        for (int rowIdx = 0; rowIdx < rows; rowIdx++)
-            for (int colIdx = 0; colIdx < cols; colIdx++)
-                strings[rowIdx][colIdx] = items[rowIdx][colIdx].toString();
         this.cellWidth = new float[cols];
+        bakeFormats();
+    }
+
+    @SuppressWarnings("unchecked")
+    public void bakeFormats() {
+        if (rows == 0 || cols == 0) return;
+        if (strings == null || strings.length < rows || strings[0].length < cols)
+            this.strings = new String[rows][cols];
+        for (int rowIdx = 0; rowIdx < rows; rowIdx++)
+            for (int colIdx = 0; colIdx < cols; colIdx++) {
+                Object format = formats[Math.min(colIdx, formats.length - 1)];
+                Object item = items[rowIdx][colIdx];
+                if (format instanceof String)
+                    strings[rowIdx][colIdx] = String.format((String) format, item);
+                else if (format instanceof DateTimeFormatter && item instanceof TemporalAccessor)
+                    strings[rowIdx][colIdx] = ((DateTimeFormatter) format).format((TemporalAccessor) item);
+                else if (format instanceof Function)
+                    strings[rowIdx][colIdx] = ((Function<Object, String>) format).apply(item);
+
+                else strings[rowIdx][colIdx] = Objects.toString(item);
+            }
     }
 
     @Override
@@ -218,6 +241,7 @@ public class Grid extends Widget {
         prefHeight = rows * cellHeight;
 
         prefWidth = 0;
+        int extraSpace = 10;
         Arrays.fill(cellWidth, 0);
         Pool<GlyphLayout> layoutPool = Pools.get(GlyphLayout.class);
         GlyphLayout layout = layoutPool.obtain();
@@ -226,8 +250,7 @@ public class Grid extends Widget {
             for (int rowIdx = 0; rowIdx < rows; rowIdx++) {
                 for (int colIdx = 0; colIdx < cols; colIdx++) {
                     layout.setText(font, strings[rowIdx][colIdx]);
-                    // TODO: Why 2* ?
-                    cellWidth[colIdx] = Math.max(2 * layout.width, cellWidth[colIdx]);
+                    cellWidth[colIdx] = Math.max(extraSpace + layout.width, cellWidth[colIdx]);
                 }
             }
             for (int colIdx = 0; colIdx < cols; colIdx++)
@@ -236,19 +259,19 @@ public class Grid extends Widget {
         } else if (columnFit == ColumnFit.FIRST_COLUMN) {
             for (int rowIdx = 0; rowIdx < rows; rowIdx++) {
                 layout.setText(font, strings[rowIdx][0]);
-                prefWidth = Math.max(layout.width, prefWidth);
+                prefWidth = Math.max(extraSpace + layout.width, prefWidth);
             }
             Arrays.fill(cellWidth, prefWidth);
             prefWidth *= cols;
 
         } else if (columnFit == ColumnFit.ESTIMATE) {
-            layout.setText(font, "wwwwww");
-            Arrays.fill(cellWidth, layout.width);
+            layout.setText(font, "WWWWWW");
+            Arrays.fill(cellWidth, extraSpace + layout.width);
             prefWidth = layout.width * cols;
 
         } else if (columnFit == ColumnFit.MINIMUM) {
-            Arrays.fill(cellWidth, cellHeight);
-            prefWidth = cellHeight * cols;
+            Arrays.fill(cellWidth, extraSpace + cellHeight);
+            prefWidth = (extraSpace + cellHeight) * cols;
         }
         layoutPool.free(layout);
         prefWidth += selectedDrawable.getLeftWidth() + selectedDrawable.getRightWidth();

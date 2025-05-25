@@ -21,7 +21,8 @@ idea.module.excludeDirs += [file("docs/")]
 subprojects {
     apply plugin: 'java-library'
 
-    group += '.' + name
+    group = rootProject.group + path.replace(":", ".")
+    version = rootProject.version
 
     [compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
 
