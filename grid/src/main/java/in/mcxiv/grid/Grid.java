@@ -33,7 +33,7 @@ public class Grid extends Widget {
         MINIMUM,
     }
 
-    protected ListStyle style;
+    protected GridStyle style;
     public Object[][] items;
     public Object[] formats; // One format per column
     public ColumnFit columnFit = ColumnFit.EXACT;
@@ -59,7 +59,7 @@ public class Grid extends Widget {
     protected int mDragStartRowIdx = -1;
     protected int mDragStartColIdx = -1;
 
-    public Grid(Object[][] itemsIn, Object[] formats, int alignment, ColumnFit columnFit, ListStyle style) {
+    public Grid(Object[][] itemsIn, Object[] formats, int alignment, ColumnFit columnFit, GridStyle style) {
         setStyle(style);
         this.formats = formats;
         setItems(itemsIn);
@@ -226,8 +226,9 @@ public class Grid extends Widget {
                     strings[rowIdx][colIdx] = ((DateTimeFormatter) format).format((TemporalAccessor) item);
                 else if (format instanceof Function)
                     strings[rowIdx][colIdx] = ((Function<Object, String>) format).apply(item);
-
                 else strings[rowIdx][colIdx] = Objects.toString(item);
+
+                strings[rowIdx][colIdx] = Objects.toString(strings[rowIdx][colIdx]);
             }
     }
 
@@ -289,6 +290,7 @@ public class Grid extends Widget {
         drawBackground(batch, parentAlpha);
 
         BitmapFont font = style.font;
+        Drawable cellBackground = style.cellBackground;
         Drawable selectedDrawable = style.selection;
         Color fontColorSelected = style.fontColorSelected;
         Color fontColorUnselected = style.fontColorUnselected;
@@ -324,7 +326,7 @@ public class Grid extends Widget {
                 String string = strings[rowIdx][colIdx];
                 boolean selected = selection.contains(item, true);
 
-                Drawable drawable = null;
+                Drawable drawable = cellBackground;
                 if (mPressedColIdx == colIdx && mPressedRowIdx == rowIdx) {
                     drawable = style.down;
                 } else if (selected) {
@@ -335,7 +337,12 @@ public class Grid extends Widget {
                 }
 
                 drawCell(batch, drawable, x + itemX, y + itemY - cellHeight, columnWidth, cellHeight);
-                drawItem(batch, font, string, x + textOffsetX + itemX, y + itemY - textOffsetY, textWidth, 0);
+                try {
+                    drawItem(batch, font, string, x + textOffsetX + itemX, y + itemY - textOffsetY, textWidth, 0);
+                } catch (Exception e) {
+                    System.out.println("colIdx=" + colIdx + ", rowIdx=" + rowIdx);
+                    throw new RuntimeException(e);
+                }
 
                 if (selected) font.getColor().set(fontColorUnselected);
                 itemY -= cellHeight;
@@ -358,16 +365,23 @@ public class Grid extends Widget {
     }
 
     protected GlyphLayout drawItem(Batch batch, BitmapFont font, String string, float x, float y, float w, float h) {
+        if (string == null) {
+            System.out.println("x=" + x + ", y=" + y + ", w=" + w + ", h=" + h);
+            System.out.println("Items");
+            for (Object[] item : items) System.out.println(Arrays.toString(item));
+            System.out.println("Strings");
+            for (String[] strings : strings) System.out.println(Arrays.toString(strings));
+        }
         return font.draw(batch, string, x, y, 0, string.length(), w, alignment, false, "...");
     }
 
-    public void setStyle(ListStyle style) {
+    public void setStyle(GridStyle style) {
         if (style == null) throw new IllegalArgumentException("style cannot be null.");
         this.style = style;
         invalidateHierarchy();
     }
 
-    public ListStyle getStyle() {
+    public GridStyle getStyle() {
         return style;
     }
 
@@ -388,4 +402,9 @@ public class Grid extends Widget {
     public int getCols() {
         return cols;
     }
+
+    public static class GridStyle extends ListStyle {
+        public Drawable cellBackground;
+    }
+
 }
