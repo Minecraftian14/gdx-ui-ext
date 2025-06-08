@@ -44,6 +44,7 @@ public class Grid extends Widget {
     private Rectangle cullingArea;
 
     public final InputListener keyListener;
+    private final Object stringsLock = new Object();
     public String[][] strings;
     protected int rows;
     protected int cols;
@@ -214,22 +215,24 @@ public class Grid extends Widget {
     @SuppressWarnings("unchecked")
     public void bakeFormats() {
         if (rows == 0 || cols == 0) return;
-        if (strings == null || strings.length < rows || strings[0].length < cols)
-            this.strings = new String[rows][cols];
-        for (int rowIdx = 0; rowIdx < rows; rowIdx++)
-            for (int colIdx = 0; colIdx < cols; colIdx++) {
-                Object format = formats[Math.min(colIdx, formats.length - 1)];
-                Object item = items[rowIdx][colIdx];
-                if (format instanceof String)
-                    strings[rowIdx][colIdx] = String.format((String) format, item);
-                else if (format instanceof DateTimeFormatter && item instanceof TemporalAccessor)
-                    strings[rowIdx][colIdx] = ((DateTimeFormatter) format).format((TemporalAccessor) item);
-                else if (format instanceof Function)
-                    strings[rowIdx][colIdx] = ((Function<Object, String>) format).apply(item);
-                else strings[rowIdx][colIdx] = Objects.toString(item);
+        synchronized (stringsLock) {
+            if (strings == null || strings.length < rows || strings[0].length < cols)
+                this.strings = new String[rows][cols];
+            for (int rowIdx = 0; rowIdx < rows; rowIdx++)
+                for (int colIdx = 0; colIdx < cols; colIdx++) {
+                    Object format = formats[Math.min(colIdx, formats.length - 1)];
+                    Object item = items[rowIdx][colIdx];
+                    if (format instanceof String)
+                        strings[rowIdx][colIdx] = String.format((String) format, item);
+                    else if (format instanceof DateTimeFormatter && item instanceof TemporalAccessor)
+                        strings[rowIdx][colIdx] = ((DateTimeFormatter) format).format((TemporalAccessor) item);
+                    else if (format instanceof Function)
+                        strings[rowIdx][colIdx] = ((Function<Object, String>) format).apply(item);
+                    else strings[rowIdx][colIdx] = Objects.toString(item);
 
-                strings[rowIdx][colIdx] = Objects.toString(strings[rowIdx][colIdx]);
-            }
+                    strings[rowIdx][colIdx] = Objects.toString(strings[rowIdx][colIdx]);
+                }
+        }
     }
 
     @Override
@@ -250,6 +253,7 @@ public class Grid extends Widget {
         if (columnFit == ColumnFit.EXACT) {
             for (int rowIdx = 0; rowIdx < rows; rowIdx++) {
                 for (int colIdx = 0; colIdx < cols; colIdx++) {
+                    // TODO :Do we need the lock here?
                     layout.setText(font, strings[rowIdx][colIdx]);
                     cellWidth[colIdx] = Math.max(extraSpace + layout.width, cellWidth[colIdx]);
                 }
@@ -323,7 +327,10 @@ public class Grid extends Widget {
             for (int rowIdx = 0; rowIdx < rows; rowIdx++) {
 
                 Object item = items[rowIdx][colIdx];
-                String string = strings[rowIdx][colIdx];
+                String string;
+                synchronized (stringsLock) {
+                    string = strings[rowIdx][colIdx];
+                }
                 boolean selected = selection.contains(item, true);
 
                 Drawable drawable = cellBackground;
@@ -372,6 +379,9 @@ public class Grid extends Widget {
             System.out.println("Strings");
             for (String[] strings : strings) System.out.println(Arrays.toString(strings));
         }
+        // TODO: Sometimes the string is null. In order to fix that I have added s a stringsLock. Verify if that fixed things.
+        //  If a NPE is thrown again, the next step is to remove that lock, and then use your brains.
+        //  Ofc, I can just add a null->"null" or an on demand bakeFormats. But also analyze why it was null in the first place.
         return font.draw(batch, string, x, y, 0, string.length(), w, alignment, false, "...");
     }
 
