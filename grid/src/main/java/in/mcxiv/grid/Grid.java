@@ -205,15 +205,15 @@ public class Grid extends Widget {
         int cols = rows == 0 ? 0 : items[0].length;
         for (int rowIdx = 1; rowIdx < rows; rowIdx++)
             if (items[rowIdx].length != cols) throw new IllegalArgumentException("Items array should be a perfect rectangle.");
+        this.items = items;
+        bakeFormats(rows, cols);
         this.rows = rows;
         this.cols = cols;
-        this.items = items;
         this.cellWidth = new float[cols];
-        bakeFormats();
     }
 
     @SuppressWarnings("unchecked")
-    public void bakeFormats() {
+    public void bakeFormats(int rows, int cols) {
         if (rows == 0 || cols == 0) return;
         synchronized (stringsLock) {
             if (strings == null || strings.length < rows || strings[0].length < cols)
