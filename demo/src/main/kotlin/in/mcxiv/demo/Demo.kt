@@ -5,14 +5,16 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.scenes.scene2d.Stage
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.kotcrab.vis.ui.VisUI
 import com.kotcrab.vis.ui.widget.tabbedpane.Tab
 import com.kotcrab.vis.ui.widget.tabbedpane.TabbedPaneAdapter
-import `in`.mcxiv.grid.vis.VisGrid
+import `in`.mcxiv.grid.Grid.GridStyle
 import `in`.mcxiv.grid.vis.ktx.visGrid
 import `in`.mcxiv.range.vis.ktx.visRangeSlider
 import ktx.actors.onChange
@@ -20,6 +22,7 @@ import ktx.scene2d.Scene2DSkin
 import ktx.scene2d.actor
 import ktx.scene2d.scene2d
 import ktx.scene2d.vis.*
+import ktx.style.set
 
 object Demo : ApplicationAdapter() {
 
@@ -29,6 +32,15 @@ object Demo : ApplicationAdapter() {
     override fun create() {
         VisUI.load()
         Scene2DSkin.defaultSkin = VisUI.getSkin()
+
+        VisUI.getSkin().set("default", GridStyle().apply {
+            cellBackground = VisUI.getSkin().get("border", Drawable::class.java)
+            fontColorUnselected = VisUI.getSkin().get("white", Color::class.java)
+            selection = VisUI.getSkin().get("padded-list-selection", Drawable::class.java)
+            fontColorSelected = VisUI.getSkin().get("white", Color::class.java)
+            font = VisUI.getSkin().get("default-font", BitmapFont::class.java)
+        })
+
         batch = SpriteBatch()
         stage = Stage(ScreenViewport(), batch)
         stage.addActor(scene2d.visTable {
@@ -43,8 +55,8 @@ object Demo : ApplicationAdapter() {
                         container.actor(tab.contentTable) { it.grow() }
                     }
                 })
-                add(getTabTwo())
-                add(getTabOne())
+                add(getTabRange())
+                add(getTabGrid())
                 it.row()
             }
             actor(container) { it.row() }
@@ -52,7 +64,7 @@ object Demo : ApplicationAdapter() {
         Gdx.input.inputProcessor = stage
     }
 
-    fun KTabbedPane.getTabOne(): Tab = tab("Range") {
+    fun KTabbedPane.getTabRange(): Tab = tab("Range") {
         contentTable.setFillParent(true)
 
         val label = visLabel("") { it.row() }
@@ -64,7 +76,7 @@ object Demo : ApplicationAdapter() {
         }).apply { this() }.let { slider.onChange { it() } }
     }
 
-    fun KTabbedPane.getTabTwo(): Tab = tab("Table") {
+    fun KTabbedPane.getTabGrid(): Tab = tab("Table") {
         contentTable.setFillParent(true)
         visGrid(arrayOf(arrayOf(1546, 28, 3), arrayOf("a", "bb", "ccccc"), arrayOf(6, 7, 8)))
     }

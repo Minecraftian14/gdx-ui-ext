@@ -112,97 +112,6 @@ public class RangeSlider extends RangeBar {
         return style.knobAfter;
     }
 
-    int whoIsTheCloset(float x, float y) {
-        SliderStyle style = getStyle();
-        Drawable knob = style.knob;
-        Drawable bg = getBackgroundDrawable();
-        float position;
-
-        if (vertical) {
-            float height = getHeight() - bg.getTopHeight() - bg.getBottomHeight();
-            float knobHeight = knob == null ? 0 : knob.getMinHeight();
-            position = y - bg.getBottomHeight() - knobHeight * 0.5f;
-            position = Math.max(Math.min(0, bg.getBottomHeight()), position);
-            position = Math.min(height - knobHeight, position);
-        } else {
-            float width = getWidth() - bg.getLeftWidth() - bg.getRightWidth();
-            float knobWidth = knob == null ? 0 : knob.getMinWidth();
-            position = x - bg.getLeftWidth() - knobWidth * 0.5f;
-            position = Math.max(Math.min(0, bg.getLeftWidth()), position);
-            position = Math.min(width - knobWidth, position);
-        }
-        if (Math.abs(positionL - position) < Math.abs(positionR - position)) return 0;
-        else return 1;
-    }
-
-    boolean calculatePositionAndValueL(float x, float y) {
-        SliderStyle style = getStyle();
-        Drawable knob = style.knob;
-        Drawable bg = getBackgroundDrawable();
-
-        float value;
-        float oldPosition = positionL;
-
-        float min = getMinValue();
-        float max = getMaxValue();
-
-        if (vertical) {
-            float height = getHeight() - bg.getTopHeight() - bg.getBottomHeight();
-            float knobHeight = knob == null ? 0 : knob.getMinHeight();
-            positionL = y - bg.getBottomHeight() - knobHeight * 0.5f;
-            value = min + (max - min) * visualInterpolationInverse.apply(positionL / (height - knobHeight));
-            positionL = Math.max(Math.min(0, bg.getBottomHeight()), positionL);
-            positionL = Math.min(height - knobHeight, positionL);
-        } else {
-            float width = getWidth() - bg.getLeftWidth() - bg.getRightWidth();
-            float knobWidth = knob == null ? 0 : knob.getMinWidth();
-            positionL = x - bg.getLeftWidth() - knobWidth * 0.5f;
-            value = min + (max - min) * visualInterpolationInverse.apply(positionL / (width - knobWidth));
-            positionL = Math.max(Math.min(0, bg.getLeftWidth()), positionL);
-            positionL = Math.min(width - knobWidth, positionL);
-        }
-
-        float oldValue = value;
-        if (!Gdx.input.isKeyPressed(Keys.SHIFT_LEFT) && !Gdx.input.isKeyPressed(Keys.SHIFT_RIGHT)) value = snap(value);
-        boolean valueSet = setValueL(value);
-        if (value == oldValue) positionL = oldPosition;
-        return valueSet;
-    }
-
-    boolean calculatePositionAndValueR(float x, float y) {
-        SliderStyle style = getStyle();
-        Drawable knob = style.knob;
-        Drawable bg = getBackgroundDrawable();
-
-        float value;
-        float oldPosition = positionR;
-
-        float min = getMinValue();
-        float max = getMaxValue();
-
-        if (vertical) {
-            float height = getHeight() - bg.getTopHeight() - bg.getBottomHeight();
-            float knobHeight = knob == null ? 0 : knob.getMinHeight();
-            positionR = y - bg.getBottomHeight() - knobHeight * 0.5f;
-            value = min + (max - min) * visualInterpolationInverse.apply(positionR / (height - knobHeight));
-            positionR = Math.max(Math.min(0, bg.getBottomHeight()), positionR);
-            positionR = Math.min(height - knobHeight, positionR);
-        } else {
-            float width = getWidth() - bg.getLeftWidth() - bg.getRightWidth();
-            float knobWidth = knob == null ? 0 : knob.getMinWidth();
-            positionR = x - bg.getLeftWidth() - knobWidth * 0.5f;
-            value = min + (max - min) * visualInterpolationInverse.apply(positionR / (width - knobWidth));
-            positionR = Math.max(Math.min(0, bg.getLeftWidth()), positionR);
-            positionR = Math.min(width - knobWidth, positionR);
-        }
-
-        float oldValue = value;
-        if (!Gdx.input.isKeyPressed(Keys.SHIFT_LEFT) && !Gdx.input.isKeyPressed(Keys.SHIFT_RIGHT)) value = snap(value);
-        boolean valueSet = setValueL(value);
-        if (value == oldValue) positionR = oldPosition;
-        return valueSet;
-    }
-
     boolean calculatePositionAndAppropriatelySetTheValue(float x, float y) {
         Drawable knob = style.knob;
         Drawable bg = getBackgroundDrawable();
@@ -282,11 +191,9 @@ public class RangeSlider extends RangeBar {
         return threshold;
     }
 
-
     public boolean isDragging() {
         return draggingPointer != -1;
     }
-
 
     public void setButton(int button) {
         this.button = button;
