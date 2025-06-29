@@ -1,6 +1,5 @@
 package in.mcxiv.grid.vis;
 
-import com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle;
 import com.kotcrab.vis.ui.VisUI;
 import in.mcxiv.grid.Grid;
 

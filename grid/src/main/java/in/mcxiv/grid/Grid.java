@@ -13,10 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.Widget;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.UIUtils;
-import com.badlogic.gdx.utils.Align;
-import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Pool;
-import com.badlogic.gdx.utils.Pools;
+import com.badlogic.gdx.utils.*;
 
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -39,7 +36,7 @@ public class Grid extends Widget {
     public ColumnFit columnFit = ColumnFit.EXACT;
     private int alignment = Align.left;
 
-    public Array<Object> selection = new Array<>();
+    public IntMap<IntSet> selection = new IntMap<>();
     public boolean isSelectionDisabled = false;
     private Rectangle cullingArea;
 
@@ -74,8 +71,8 @@ public class Grid extends Widget {
                 switch (keycode) {
                     case Input.Keys.A:
                         if (UIUtils.ctrl()) {
-                            selection.clear();
-                            for (Object[] row : items) selection.addAll(row);
+                            if (isSelectionDisabled) return true;
+                            selectAll();
                             return true;
                         }
                         break;
@@ -101,12 +98,12 @@ public class Grid extends Widget {
                         return true;
                     case Input.Keys.SPACE:
                         if (mPressedColIdx == -1 || mPressedRowIdx == -1) return true;
-                        Object item = items[mPressedRowIdx][mPressedColIdx];
-                        if (selection.contains(item, true)) selection.removeValue(item, true);
-                        else selection.add(item);
+                        if (isSelectionDisabled) return true;
+                        flipSelection(mPressedRowIdx, mPressedColIdx);
                         return true;
                     case Input.Keys.ESCAPE:
                         mPressedRowIdx = mPressedColIdx = -1;
+                        deselectAll();
                         if (getStage() != null) getStage().setKeyboardFocus(null);
                         return true;
                 }
@@ -121,9 +118,7 @@ public class Grid extends Widget {
                 int colIdx = screenToCol(x, true);
                 int rowIdx = screenToRow(y, true);
                 if (colIdx == -1 || rowIdx == -1) return true;
-                Object value = items[rowIdx][colIdx];
-                if (selection.contains(value, true)) selection.removeValue(value, true);
-                else selection.add(value);
+                flipSelection(rowIdx, colIdx);
                 mPressedColIdx = colIdx;
                 mPressedRowIdx = rowIdx;
                 return true;
@@ -139,13 +134,10 @@ public class Grid extends Widget {
                     int mDragEndRowIdx = screenToRow(y, false);
                     int rowStart = Math.min(mDragStartRowIdx, mDragEndRowIdx), rowEnd = Math.max(mDragStartRowIdx, mDragEndRowIdx);
                     int colStart = Math.min(mDragStartColIdx, mDragEndColIdx), colEnd = Math.max(mDragStartColIdx, mDragEndColIdx);
-                    for (int rowIdx = rowStart; rowIdx <= rowEnd; rowIdx++) {
-                        for (int colIdx = colStart; colIdx <= colEnd; colIdx++) {
-                            Object item = items[rowIdx][colIdx];
-                            if (!selection.contains(item, true))
-                                selection.add(item);
-                        }
-                    }
+//                    for (int rowIdx = rowStart; rowIdx <= rowEnd; rowIdx++)
+//                        for (int colIdx = colStart; colIdx <= colEnd; colIdx++)
+//                            select(rowIdx, colIdx);
+                    selectAll(rowStart, rowEnd + 1, colStart, colEnd + 1);
                     mDragStartRowIdx = mDragStartColIdx = -1;
                 }
             }
@@ -251,20 +243,23 @@ public class Grid extends Widget {
         GlyphLayout layout = layoutPool.obtain();
 
         if (columnFit == ColumnFit.EXACT) {
-            for (int rowIdx = 0; rowIdx < rows; rowIdx++) {
-                for (int colIdx = 0; colIdx < cols; colIdx++) {
-                    // TODO :Do we need the lock here?
-                    layout.setText(font, strings[rowIdx][colIdx]);
-                    cellWidth[colIdx] = Math.max(extraSpace + layout.width, cellWidth[colIdx]);
+            synchronized (stringsLock) {
+                for (int rowIdx = 0; rowIdx < rows; rowIdx++) {
+                    for (int colIdx = 0; colIdx < cols; colIdx++) {
+                        layout.setText(font, strings[rowIdx][colIdx]);
+                        cellWidth[colIdx] = Math.max(extraSpace + layout.width, cellWidth[colIdx]);
+                    }
                 }
             }
             for (int colIdx = 0; colIdx < cols; colIdx++)
                 prefWidth += cellWidth[colIdx];
 
         } else if (columnFit == ColumnFit.FIRST_COLUMN) {
-            for (int rowIdx = 0; rowIdx < rows; rowIdx++) {
-                layout.setText(font, strings[rowIdx][0]);
-                prefWidth = Math.max(extraSpace + layout.width, prefWidth);
+            synchronized (stringsLock) {
+                for (int rowIdx = 0; rowIdx < rows; rowIdx++) {
+                    layout.setText(font, strings[rowIdx][0]);
+                    prefWidth = Math.max(extraSpace + layout.width, prefWidth);
+                }
             }
             Arrays.fill(cellWidth, prefWidth);
             prefWidth *= cols;
@@ -331,7 +326,7 @@ public class Grid extends Widget {
                 synchronized (stringsLock) {
                     string = strings[rowIdx][colIdx];
                 }
-                boolean selected = selection.contains(item, true);
+                boolean selected = isSelected(rowIdx, colIdx);
 
                 Drawable drawable = cellBackground;
                 if (mPressedColIdx == colIdx && mPressedRowIdx == rowIdx) {
@@ -411,6 +406,61 @@ public class Grid extends Widget {
 
     public int getCols() {
         return cols;
+    }
+
+    // Returns true if not selected already
+    public boolean select(int row, int col) {
+        if (!selection.containsKey(row)) selection.put(row, new IntSet());
+        return selection.get(row).add(col);
+    }
+
+    // Returns true if not deselected already
+    public boolean deselect(int row, int col) {
+        if (!selection.containsKey(row)) return false;
+        return selection.get(row).remove(col);
+    }
+
+    public boolean isSelected(int row, int col) {
+        if (!selection.containsKey(row)) return false;
+        return selection.get(row).contains(col);
+    }
+
+    // Returns true if item is now selected
+    public boolean flipSelection(int row, int col) {
+        if (isSelected(row, col)) {
+            deselect(row, col);
+            return false;
+        } else {
+            select(row, col);
+            return true;
+        }
+    }
+
+    public void selectAll(int rStart, int rEnd, int cStart, int cEnd) {
+        if (isSelectionDisabled) return;
+        for (int row = rStart; row < rEnd; row++) {
+            if (!selection.containsKey(row)) selection.put(row, new IntSet());
+            IntSet entries = selection.get(row);
+            for (int col = cStart; col < cEnd; col++) entries.add(col);
+        }
+    }
+
+    public void selectAll() {
+        selectAll(0, rows, 0, cols);
+    }
+
+    public void deselectAll() {
+        for (int row = 0; row < rows; row++)
+            if (selection.containsKey(row))
+                selection.get(row).clear();
+    }
+
+    public void deselectAll(int rStart, int rEnd, int cStart, int cEnd) {
+        for (int row = rStart; row < rEnd; row++) {
+            if (!selection.containsKey(row)) continue;
+            IntSet entries = selection.get(row);
+            for (int col = cStart; col < cEnd; col++) entries.remove(col);
+        }
     }
 
     public static class GridStyle extends ListStyle {

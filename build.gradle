@@ -112,8 +112,8 @@ configure(project(':demo')) {
         api "com.badlogicgames.gdx:gdx-platform:$vGdx:natives-desktop"
 
         rootProject.subprojects
-                .findAll { it.path != ':demo' }
-                .forEach { api it }
+            .findAll { it.path != ':demo' }
+            .forEach { api it }
 
         testImplementation 'org.jetbrains.kotlin:kotlin-test'
     }

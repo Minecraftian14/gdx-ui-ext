@@ -5,7 +5,7 @@ plugins {
 rootProject.name = 'gdx-ui-ext'
 
 def enrichedModule = (String module) ->
-        new String[]{"$module", "$module:vis", "$module:ktx", "$module:vis:ktx"}
+    new String[]{"$module", "$module:vis", "$module:ktx", "$module:vis:ktx"}
 
 include ':demo'
 include enrichedModule(':range')

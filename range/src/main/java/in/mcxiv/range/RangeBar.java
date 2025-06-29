@@ -108,23 +108,23 @@ public class RangeBar extends Widget implements Disableable {
         float knobHeightHalf = knobHeight * 0.5f;
         if (knobBefore != null) {
             drawRound(batch, knobBefore, //
-                    x + (width - knobBefore.getMinWidth()) * 0.5f, //
-                    y + bgBottomHeight, //
-                    knobBefore.getMinWidth(), beforeHeight + knobHeightHalf);
+                x + (width - knobBefore.getMinWidth()) * 0.5f, //
+                y + bgBottomHeight, //
+                knobBefore.getMinWidth(), beforeHeight + knobHeightHalf);
         }
         if (knobAfter != null) {
             drawRound(batch, knobAfter, //
-                    x + (width - knobAfter.getMinWidth()) * 0.5f, //
-                    y + positionL + knobHeightHalf, //
-                    knobAfter.getMinWidth(),
-                    total - (round ? (float) Math.ceil(beforeHeight - knobHeightHalf) : beforeHeight - knobHeightHalf));
+                x + (width - knobAfter.getMinWidth()) * 0.5f, //
+                y + positionL + knobHeightHalf, //
+                knobAfter.getMinWidth(),
+                total - (round ? (float) Math.ceil(beforeHeight - knobHeightHalf) : beforeHeight - knobHeightHalf));
         }
         if (currentKnob != null) {
             float w = currentKnob.getMinWidth(), h = currentKnob.getMinHeight();
             drawRound(batch, currentKnob, //
-                    x + (width - w) * 0.5f, //
-                    y + positionL + (knobHeight - h) * 0.5f, //
-                    w, h);
+                x + (width - w) * 0.5f, //
+                y + positionL + (knobHeight - h) * 0.5f, //
+                w, h);
         }
     }
 
@@ -150,23 +150,23 @@ public class RangeBar extends Widget implements Disableable {
     private void drawHorizontalKnob(Batch batch, float x, float y, float height, float knobWidth, Drawable knobBefore, Drawable knobAfter, Drawable currentKnob, float bgLeftWidth, float beforeWidth, float position, float knobWidthHalf, float total) {
         if (knobBefore != null) {
             drawRound(batch, knobBefore, //
-                    x + bgLeftWidth, //
-                    y + (height - knobBefore.getMinHeight()) * 0.5f, //
-                    beforeWidth + knobWidthHalf, knobBefore.getMinHeight());
+                x + bgLeftWidth, //
+                y + (height - knobBefore.getMinHeight()) * 0.5f, //
+                beforeWidth + knobWidthHalf, knobBefore.getMinHeight());
         }
         if (knobAfter != null) {
             drawRound(batch, knobAfter, //
-                    x + position + knobWidthHalf, //
-                    y + (height - knobAfter.getMinHeight()) * 0.5f, //
-                    total - (round ? (float) Math.ceil(beforeWidth - knobWidthHalf) : beforeWidth - knobWidthHalf),
-                    knobAfter.getMinHeight());
+                x + position + knobWidthHalf, //
+                y + (height - knobAfter.getMinHeight()) * 0.5f, //
+                total - (round ? (float) Math.ceil(beforeWidth - knobWidthHalf) : beforeWidth - knobWidthHalf),
+                knobAfter.getMinHeight());
         }
         if (currentKnob != null) {
             float w = currentKnob.getMinWidth(), h = currentKnob.getMinHeight();
             drawRound(batch, currentKnob, //
-                    x + position + (knobWidth - w) * 0.5f, //
-                    y + (height - h) * 0.5f, //
-                    w, h);
+                x + position + (knobWidth - w) * 0.5f, //
+                y + (height - h) * 0.5f, //
+                w, h);
         }
     }
 
