@@ -8,28 +8,29 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.scenes.scene2d.Stage
+import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.kotcrab.vis.ui.VisUI
-import com.kotcrab.vis.ui.widget.VisImage
-import com.kotcrab.vis.ui.widget.VisImageButton
-import com.kotcrab.vis.ui.widget.color.ColorPicker
 import com.kotcrab.vis.ui.widget.tabbedpane.Tab
 import com.kotcrab.vis.ui.widget.tabbedpane.TabbedPane
 import com.kotcrab.vis.ui.widget.tabbedpane.TabbedPaneAdapter
-import `in`.mcxiv.date.DatePicker
 import `in`.mcxiv.date.vis.VisDatePicker.VisDatePickerStyle
 import `in`.mcxiv.date.vis.ktx.visDatePicker
 import `in`.mcxiv.grid.Grid.GridStyle
 import `in`.mcxiv.grid.vis.ktx.visGrid
 import `in`.mcxiv.range.vis.ktx.visRangeSlider
+import `in`.mcxiv.time.TimePicker
+import `in`.mcxiv.time.TimePicker.TimePickerStyle
 import ktx.actors.onChange
 import ktx.scene2d.Scene2DSkin
 import ktx.scene2d.actor
 import ktx.scene2d.actors
 import ktx.scene2d.scene2d
-import ktx.scene2d.vis.*
+import ktx.scene2d.vis.KTab
+import ktx.scene2d.vis.visLabel
+import ktx.scene2d.vis.visTable
 import ktx.style.set
 
 object Demo : ApplicationAdapter() {
@@ -56,9 +57,10 @@ object Demo : ApplicationAdapter() {
                             container.actor(tab.contentTable) { it.grow() }
                         }
                     })
-                    it.add(getTabDate())
                     it.add(getTabRange())
                     it.add(getTabGrid())
+                    it.add(getTabDate())
+                    it.add(getTabTime())
                     it.table
                 }) { it.growX().row() }
                 actor(container) { it.grow().row() }
@@ -97,6 +99,14 @@ object Demo : ApplicationAdapter() {
         contentTable.setFillParent(true)
         VisUI.getSkin()["default"] = VisDatePickerStyle()
         visDatePicker()
+    }
+
+    fun getTabTime(): Tab = KTab("Time", false, false).apply {
+        contentTable.setFillParent(true)
+//        VisUI.getSkin()["default"] = TimePickerStyle()
+        actor(TimePicker(VisUI.getSkin(), TimePickerStyle().apply {
+            hand = Image(VisUI.getSkin().getRegion("white"))
+        })) { it.grow() }
     }
 
     override fun resume() {
