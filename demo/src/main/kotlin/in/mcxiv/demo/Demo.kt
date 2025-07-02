@@ -12,14 +12,22 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.kotcrab.vis.ui.VisUI
+import com.kotcrab.vis.ui.widget.VisImage
+import com.kotcrab.vis.ui.widget.VisImageButton
+import com.kotcrab.vis.ui.widget.color.ColorPicker
 import com.kotcrab.vis.ui.widget.tabbedpane.Tab
+import com.kotcrab.vis.ui.widget.tabbedpane.TabbedPane
 import com.kotcrab.vis.ui.widget.tabbedpane.TabbedPaneAdapter
+import `in`.mcxiv.date.DatePicker
+import `in`.mcxiv.date.vis.VisDatePicker.VisDatePickerStyle
+import `in`.mcxiv.date.vis.ktx.visDatePicker
 import `in`.mcxiv.grid.Grid.GridStyle
 import `in`.mcxiv.grid.vis.ktx.visGrid
 import `in`.mcxiv.range.vis.ktx.visRangeSlider
 import ktx.actors.onChange
 import ktx.scene2d.Scene2DSkin
 import ktx.scene2d.actor
+import ktx.scene2d.actors
 import ktx.scene2d.scene2d
 import ktx.scene2d.vis.*
 import ktx.style.set
@@ -33,38 +41,33 @@ object Demo : ApplicationAdapter() {
         VisUI.load()
         Scene2DSkin.defaultSkin = VisUI.getSkin()
 
-        VisUI.getSkin().set("default", GridStyle().apply {
-            cellBackground = VisUI.getSkin().get("border", Drawable::class.java)
-            fontColorUnselected = VisUI.getSkin().get("white", Color::class.java)
-            selection = VisUI.getSkin().get("padded-list-selection", Drawable::class.java)
-            fontColorSelected = VisUI.getSkin().get("white", Color::class.java)
-            font = VisUI.getSkin().get("default-font", BitmapFont::class.java)
-        })
-
         batch = SpriteBatch()
         stage = Stage(ScreenViewport(), batch)
-        stage.addActor(scene2d.visTable {
-            defaults().pad(30f).growX().top()
-            setFillParent(true)
-            val container = scene2d.visTable {}
-            tabbedPane {
-                addListener(object : TabbedPaneAdapter() {
-                    override fun switchedTab(tab: Tab) {
-                        println("switched" + tab.hashCode())
-                        container.clearChildren()
-                        container.actor(tab.contentTable) { it.grow() }
-                    }
-                })
-                add(getTabRange())
-                add(getTabGrid())
-                it.row()
+        stage.actors {
+            visTable {
+                defaults().pad(30f).growX().top()
+                setFillParent(true)
+                val container = scene2d.visTable {}
+
+                actor(TabbedPane().let {
+                    it.addListener(object : TabbedPaneAdapter() {
+                        override fun switchedTab(tab: Tab) {
+                            container.clearChildren()
+                            container.actor(tab.contentTable) { it.grow() }
+                        }
+                    })
+                    it.add(getTabDate())
+                    it.add(getTabRange())
+                    it.add(getTabGrid())
+                    it.table
+                }) { it.growX().row() }
+                actor(container) { it.grow().row() }
             }
-            actor(container) { it.row() }
-        })
+        }
         Gdx.input.inputProcessor = stage
     }
 
-    fun KTabbedPane.getTabRange(): Tab = tab("Range") {
+    fun getTabRange(): Tab = KTab("Range", false, false).apply {
         contentTable.setFillParent(true)
 
         val label = visLabel("") { it.row() }
@@ -76,9 +79,24 @@ object Demo : ApplicationAdapter() {
         }).apply { this() }.let { slider.onChange { it() } }
     }
 
-    fun KTabbedPane.getTabGrid(): Tab = tab("Table") {
+    fun getTabGrid(): Tab = KTab("Table", false, false).apply {
         contentTable.setFillParent(true)
+
+        VisUI.getSkin()["default"] = GridStyle().apply {
+            cellBackground = VisUI.getSkin().get("border", Drawable::class.java)
+            fontColorUnselected = VisUI.getSkin().get("white", Color::class.java)
+            selection = VisUI.getSkin().get("padded-list-selection", Drawable::class.java)
+            fontColorSelected = VisUI.getSkin().get("white", Color::class.java)
+            font = VisUI.getSkin().get("default-font", BitmapFont::class.java)
+        }
+
         visGrid(arrayOf(arrayOf(1546, 28, 3), arrayOf("a", "bb", "ccccc"), arrayOf(6, 7, 8)))
+    }
+
+    fun getTabDate(): Tab = KTab("Date", false, false).apply {
+        contentTable.setFillParent(true)
+        VisUI.getSkin()["default"] = VisDatePickerStyle()
+        visDatePicker()
     }
 
     override fun resume() {

@@ -10,3 +10,7 @@ def enrichedModule = (String module) ->
 include ':demo'
 include enrichedModule(':range')
 include enrichedModule(':grid')
+include enrichedModule(':layout')
+include enrichedModule(':date')
+include enrichedModule(':time')
+include enrichedModule(':datetime')
