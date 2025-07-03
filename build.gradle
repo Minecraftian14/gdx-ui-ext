@@ -58,8 +58,12 @@ subprojects {
         maven { url 'https://jitpack.io' }
     }
 
+//    configurations.create("provided")
+//    configurations.api.extendsFrom(configurations.provided)
+//    configurations.api.canBeResolved(true)
+
     dependencies {
-        api "com.badlogicgames.gdx:gdx:$vGdx"
+        implementation "com.badlogicgames.gdx:gdx:$vGdx"
         testImplementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$vGdx"
         testImplementation "com.badlogicgames.gdx:gdx-platform:$vGdx:natives-desktop"
         testImplementation "junit:junit:$vJUnit"
@@ -73,7 +77,7 @@ subprojects {
 
 configure(subprojects.findAll { it.path.contains(':vis') }) {
     dependencies {
-        api "com.kotcrab.vis:vis-ui:$vVisUi"
+        implementation "com.kotcrab.vis:vis-ui:$vVisUi"
     }
 }
 
@@ -88,15 +92,13 @@ configure(subprojects.findAll { it.path.contains(':ktx') }) {
 
 configure(subprojects.findAll { it.path.contains(':vis:ktx') }) {
     dependencies {
-        api "io.github.libktx:ktx-vis-style:$vKTX"
-        api "io.github.libktx:ktx-vis:$vKTX"
+        implementation "io.github.libktx:ktx-vis-style:$vKTX"
+        implementation "io.github.libktx:ktx-vis:$vKTX"
     }
 }
 
 configure(subprojects.findAll { it.path.contains(':vis') || it.path.contains(':ktx') }) {
-    def parentPath = path.toString()
-    parentPath = parentPath.substring(0, parentPath.lastIndexOf(":"))
-    dependencies { api project(parentPath) }
+    dependencies { api parent }
 }
 
 configure(project(':demo')) {
@@ -104,12 +106,12 @@ configure(project(':demo')) {
     compileKotlin { compilerOptions { incremental = true } }
     kotlin { jvmToolchain(8) }
     dependencies {
-        api "com.kotcrab.vis:vis-ui:$vVisUi"
-        api "io.github.libktx:ktx-actors:$vKTX"
-        api "io.github.libktx:ktx-vis-style:$vKTX"
-        api "io.github.libktx:ktx-vis:$vKTX"
-        api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$vGdx"
-        api "com.badlogicgames.gdx:gdx-platform:$vGdx:natives-desktop"
+        implementation "com.kotcrab.vis:vis-ui:$vVisUi"
+        implementation "io.github.libktx:ktx-actors:$vKTX"
+        implementation "io.github.libktx:ktx-vis-style:$vKTX"
+        implementation "io.github.libktx:ktx-vis:$vKTX"
+        implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$vGdx"
+        implementation "com.badlogicgames.gdx:gdx-platform:$vGdx:natives-desktop"
 
         rootProject.subprojects
             .findAll { it.path != ':demo' }
@@ -122,7 +124,9 @@ configure(project(':demo')) {
 apply plugin: 'maven-publish'
 publishing {
     publications {
-        subprojects.forEach { subproject ->
+        clear()
+
+        subprojects.forEach { Project subproject ->
             def classifier = subproject.path.replace(':', '-')
             def baseName = projectName + classifier
 
@@ -130,6 +134,7 @@ publishing {
                 archiveBaseName = baseName
                 from subproject.sourceSets.main.output.classesDirs
 //              from subproject.sourceSets.main.output.resourcesDir
+//              from subproject.configurations.api.collect { it.isDirectory() ? it : zipTree(it) }
                 manifest { attributes 'Implementation-Title': baseName, 'Implementation-Version': version }
             }
 
